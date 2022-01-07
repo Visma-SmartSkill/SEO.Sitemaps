@@ -27,11 +27,6 @@ namespace Geta.SEO.Sitemaps.Utils
                 return true;
             }
 
-            if (!IsAccessibleToEveryone(content))
-            {
-                return true;
-            }
-
             if (content.IsDeleted)
             {
                 return true;
@@ -44,6 +39,11 @@ namespace Geta.SEO.Sitemaps.Utils
             }
 
             if (!IsSitemapPropertyEnabled(content))
+            {
+                return true;
+            }
+
+            if (IsAutoArchived(content))
             {
                 return true;
             }
@@ -89,6 +89,17 @@ namespace Geta.SEO.Sitemaps.Utils
             return page.LinkType == PageShortcutType.External ||
                           page.LinkType == PageShortcutType.Shortcut ||
                           page.LinkType == PageShortcutType.Inactive;
+        }
+
+        private static bool IsAutoArchived(IContentData content)
+        {
+            if (content is PageData page)
+            {
+                var property = content.Property["AutoArchived"] as PropertyBoolean;
+                return property?.Boolean ?? false;
+            }
+
+            return false;
         }
 
         private static bool IsSitemapPropertyEnabled(IContentData content)

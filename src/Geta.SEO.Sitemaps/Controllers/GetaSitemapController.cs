@@ -36,6 +36,7 @@ namespace Geta.SEO.Sitemaps.Controllers
             _sitemapXmlGeneratorFactory = sitemapXmlGeneratorFactory;
         }
 
+        [Authorize]
         public ActionResult Index()
         {
             SitemapData sitemapData = _sitemapRepository.GetSitemapData(Request.Url.ToString());

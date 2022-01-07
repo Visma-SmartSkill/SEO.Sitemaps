@@ -32,6 +32,7 @@ namespace Geta.SEO.Sitemaps.XML
         private static readonly ILog Log = LogManager.GetLogger(typeof(SitemapXmlGenerator));
         protected const int MaxSitemapEntryCount = 50000;
         protected ISet<string> UrlSet { get; private set; }
+        protected ISet<int> PageIdSet { get; private set; }
         protected bool StopGeneration { get; private set; }
         protected string HostLanguageBranch { get; set; }
 
@@ -70,6 +71,7 @@ namespace Geta.SEO.Sitemaps.XML
             this.LanguageBranchRepository = languageBranchRepository;
             this.EnabledLanguages = this.LanguageBranchRepository.ListEnabled();
             this.UrlSet = new HashSet<string>();
+            this.PageIdSet = new HashSet<int>();
             this.ContentFilter = contentFilter;
         }
 
@@ -187,7 +189,22 @@ namespace Geta.SEO.Sitemaps.XML
                     continue;
                 }
 
-                var contentLanguages = this.GetLanguageBranches(contentReference);
+                var pageRef = contentReference;
+                if (ContentRepository.Get<IContent>(contentReference) is PageData pageData)
+                {
+                    //
+                    // VSS: If the current page is a chapter, only log that chapters root page.
+                    //
+                    var root = GetChaperRoot(pageData);
+                    if (root != null)
+                    {
+                        if (PageIdSet.Contains(root.ContentLink.ID)) continue;
+                        PageIdSet.Add(root.ContentLink.ID);
+                        pageRef = root.ContentLink;
+                    }
+                }
+
+                var contentLanguages = this.GetLanguageBranches(pageRef);
 
                 foreach (var contentLanguageInfo in contentLanguages)
                 {
@@ -409,6 +426,30 @@ namespace Geta.SEO.Sitemaps.XML
             {
                 element.Add(CreateHrefLangElement(hrefLangData));
             }
+        }
+
+        private PageData GetChaperRoot(PageData page)
+        {
+            var pageTypeName = "ChaptersPage";
+            if (string.IsNullOrEmpty(pageTypeName) || !pageTypeName.Equals(page.PageTypeName))
+            {
+                return null;
+            }
+
+            var currentPage = page;
+            var root = currentPage;
+
+            do
+            {
+                if (!currentPage.PageTypeName.Equals(pageTypeName))
+                {
+                    break;
+                }
+                root = currentPage;
+                var parentRef = currentPage.ParentLink as ContentReference;
+                currentPage = ContentRepository.Get<IContent>(parentRef) as PageData;
+            } while (currentPage != null);
+            return root;
         }
 
         protected virtual void AddFilteredContentElement(CurrentLanguageContent languageContentInfo,
